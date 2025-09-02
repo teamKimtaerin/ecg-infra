@@ -173,6 +173,25 @@ resource "aws_lb_listener" "api" {
   }
 }
 
+# HTTPS Listener for 443 port
+resource "aws_lb_listener" "api_https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.domain_name == null ? aws_acm_certificate.self_signed[0].arn : aws_acm_certificate.main[0].arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-api-https-listener"
+    Environment = var.environment
+  }
+}
+
 # ECS Service
 resource "aws_ecs_service" "api" {
   name            = "${var.project_name}-${var.environment}-api-service"
@@ -195,6 +214,7 @@ resource "aws_ecs_service" "api" {
 
   depends_on = [
     aws_lb_listener.api,
+    aws_lb_listener.api_https,
     aws_iam_role_policy_attachment.ecs_task_execution_role_policy
   ]
 

@@ -57,3 +57,15 @@ variable "api_memory" {
   type        = number
   default     = 1024
 }
+
+variable "domain_name" {
+  description = "Domain name for the application (optional)"
+  type        = string
+  default     = null
+}
+
+variable "create_certificate" {
+  description = "Whether to create ACM certificate"
+  type        = bool
+  default     = false
+}

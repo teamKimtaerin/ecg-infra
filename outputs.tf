@@ -116,3 +116,20 @@ output "model_server_role_arn" {
   description = "Model server role ARN"
   value       = aws_iam_role.model_server_role.arn
 }
+
+# Certificate
+output "certificate_arn" {
+  description = "ACM certificate ARN"
+  value       = var.domain_name == null ? aws_acm_certificate.self_signed[0].arn : (var.create_certificate ? aws_acm_certificate.main[0].arn : null)
+}
+
+# API URLs
+output "api_url_http" {
+  description = "HTTP API URL"
+  value       = "http://${aws_lb.main.dns_name}"
+}
+
+output "api_url_https" {
+  description = "HTTPS API URL"
+  value       = "https://${aws_lb.main.dns_name}"
+}
