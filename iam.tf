@@ -121,6 +121,12 @@ resource "aws_iam_role_policy" "model_server_s3_policy" {
   })
 }
 
+# Session Manager Policy for Model Server
+resource "aws_iam_role_policy_attachment" "model_server_ssm_policy" {
+  role       = aws_iam_role.model_server_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # Instance Profile
 resource "aws_iam_instance_profile" "model_server_profile" {
   name = "${var.project_name}-${var.environment}-model-server-profile"
