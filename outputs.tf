@@ -133,3 +133,20 @@ output "api_url_https" {
   description = "HTTPS API URL"
   value       = "https://${aws_lb.main.dns_name}"
 }
+
+# RDS Outputs
+output "rds_endpoint" {
+  description = "RDS PostgreSQL endpoint"
+  value       = aws_db_instance.postgresql.endpoint
+}
+
+output "rds_port" {
+  description = "RDS PostgreSQL port"
+  value       = aws_db_instance.postgresql.port
+}
+
+output "database_url" {
+  description = "Database connection URL"
+  value       = "postgresql://${aws_db_instance.postgresql.username}:${random_password.db_password.result}@${aws_db_instance.postgresql.endpoint}:${aws_db_instance.postgresql.port}/${aws_db_instance.postgresql.db_name}"
+  sensitive   = true
+}

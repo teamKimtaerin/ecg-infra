@@ -87,6 +87,30 @@ resource "aws_ecs_task_definition" "api" {
         {
           name  = "MODEL_SERVER_URL"
           value = "http://${aws_instance.model_server.private_ip}:8080"
+        },
+        {
+          name  = "DATABASE_URL"
+          value = "postgresql://${aws_db_instance.postgresql.username}:${random_password.db_password.result}@${aws_db_instance.postgresql.endpoint}:${aws_db_instance.postgresql.port}/${aws_db_instance.postgresql.db_name}"
+        },
+        {
+          name  = "DB_HOST"
+          value = aws_db_instance.postgresql.endpoint
+        },
+        {
+          name  = "DB_PORT"
+          value = tostring(aws_db_instance.postgresql.port)
+        },
+        {
+          name  = "DB_NAME"
+          value = aws_db_instance.postgresql.db_name
+        },
+        {
+          name  = "DB_USER"
+          value = aws_db_instance.postgresql.username
+        },
+        {
+          name  = "DB_PASSWORD"
+          value = random_password.db_password.result
         }
       ]
 
