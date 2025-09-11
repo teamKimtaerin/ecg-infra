@@ -85,7 +85,7 @@ resource "aws_ecs_task_definition" "api" {
           value = aws_s3_bucket.video_storage.id
         },
         {
-          name  = "MODEL_SERVER_URL"
+          name  = "ML_API_SERVER_URL"
           value = "http://${aws_instance.model_server.private_ip}:8080"
         },
         {
