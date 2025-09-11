@@ -31,6 +31,9 @@ resource "aws_cloudfront_distribution" "main" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
   comment             = "${var.project_name} ${var.environment} CloudFront Distribution"
+  
+  # Custom domain aliases
+  aliases = ["ho-it.site", "www.ho-it.site"]
 
   # Logging configuration
   logging_config {
@@ -116,8 +119,9 @@ resource "aws_cloudfront_distribution" "main" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
-    minimum_protocol_version       = "TLSv1.2_2021"
+    acm_certificate_arn      = "arn:aws:acm:us-east-1:084828586938:certificate/ae2eb383-27f0-481c-a0aa-000a27e78049"
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 
   custom_error_response {
