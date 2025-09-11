@@ -23,6 +23,14 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.ecs.id]
   }
 
+  ingress {
+    description     = "PostgreSQL from Model Server"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.model_server.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
