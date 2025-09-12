@@ -85,8 +85,8 @@ resource "aws_ecs_task_definition" "api" {
           value = aws_s3_bucket.video_storage.id
         },
         {
-          name  = "ML_API_SERVER_URL"
-          value = "http://${aws_instance.model_server.private_ip}:8080"
+          name  = "MODEL_SERVER_URL"
+          value = "http://${aws_instance.model_server.private_ip}:8001"
         },
         {
           name  = "DATABASE_URL"
@@ -218,11 +218,12 @@ resource "aws_lb_listener" "api_https" {
 
 # ECS Service
 resource "aws_ecs_service" "api" {
-  name            = "${var.project_name}-${var.environment}-api-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.api.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"
+  name                   = "${var.project_name}-${var.environment}-api-service"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.api.arn
+  desired_count          = 2
+  launch_type            = "FARGATE"
+  enable_execute_command = true
 
   network_configuration {
     subnets          = aws_subnet.private[*].id

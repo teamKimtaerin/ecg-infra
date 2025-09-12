@@ -69,6 +69,16 @@ resource "aws_iam_role_policy" "ecs_task_s3_policy" {
           aws_s3_bucket.video_storage.arn,
           "${aws_s3_bucket.video_storage.arn}/*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
       }
     ]
   })

@@ -74,6 +74,14 @@ resource "aws_security_group" "model_server" {
     cidr_blocks = ["0.0.0.0/0"] # Restrict this to your IP in production
   }
 
+  ingress {
+    description     = "HTTP from ECS"
+    from_port       = 8001
+    to_port         = 8001
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -98,12 +106,3 @@ resource "aws_security_group_rule" "ecs_from_model_server" {
   description              = "HTTP from Model Server"
 }
 
-resource "aws_security_group_rule" "model_server_from_ecs" {
-  type                     = "ingress"
-  from_port                = 8080
-  to_port                  = 8080
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.model_server.id
-  source_security_group_id = aws_security_group.ecs.id
-  description              = "HTTP from ECS"
-}
