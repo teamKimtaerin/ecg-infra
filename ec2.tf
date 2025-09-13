@@ -73,7 +73,8 @@ resource "aws_instance" "model_server" {
     version = "$Latest"
   }
 
-  subnet_id = aws_subnet.private[0].id
+  subnet_id  = aws_subnet.private[0].id
+  private_ip = "10.0.10.42"
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-model-server"

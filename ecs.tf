@@ -62,6 +62,10 @@ resource "aws_ecs_task_definition" "api" {
   memory                   = var.api_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
+  
+  lifecycle {
+    ignore_changes = [container_definitions]
+  }
 
   container_definitions = jsonencode([
     {
