@@ -59,6 +59,11 @@ resource "aws_cloudfront_distribution" "main" {
       }
     }
 
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.url_rewrite.arn
+    }
+
     min_ttl     = 0
     default_ttl = 86400
     max_ttl     = 31536000

@@ -102,6 +102,19 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
+# Frontend bucket website configuration for SPA routing
+resource "aws_s3_bucket_website_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "index.html"
+  }
+}
+
 # Frontend bucket public access block
 resource "aws_s3_bucket_public_access_block" "frontend_pab" {
   bucket = aws_s3_bucket.frontend.id
