@@ -204,6 +204,22 @@ resource "aws_s3_bucket_policy" "video_storage_policy" {
             "AWS:SourceArn" = aws_cloudfront_distribution.main.arn
           }
         }
+      },
+      {
+        Sid    = "AllowModelServerAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = aws_iam_role.model_server_role.arn
+        }
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.video_storage.arn,
+          "${aws_s3_bucket.video_storage.arn}/*"
+        ]
       }
     ]
   })
