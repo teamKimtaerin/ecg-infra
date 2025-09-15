@@ -9,14 +9,14 @@ resource "aws_key_pair" "model_server" {
   }
 }
 
-# Get latest Amazon Linux 2 AMI with GPU support
+# Get latest Amazon Linux 2 AMI
 data "aws_ami" "amazon_linux_gpu" {
   most_recent = true
   owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["Deep Learning AMI GPU PyTorch *"]
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
   }
 
   filter {
@@ -66,6 +66,47 @@ resource "aws_launch_template" "model_server" {
   }
 }
 
+# Launch Template for Second Model Server (100GB)
+resource "aws_launch_template" "model_server_2" {
+  name_prefix   = "${var.project_name}-${var.environment}-model-server-2-"
+  image_id      = data.aws_ami.amazon_linux_gpu.id
+  instance_type = var.model_instance_type
+  key_name      = aws_key_pair.model_server.key_name
+
+  vpc_security_group_ids = [aws_security_group.model_server.id]
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.model_server_profile.name
+  }
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size = 100
+      volume_type = "gp3"
+      encrypted   = false
+    }
+  }
+
+  user_data = base64encode(templatefile("${path.module}/user_data/model_server_init.sh", {
+    s3_bucket_name = aws_s3_bucket.video_storage.id
+    aws_region     = var.aws_region
+  }))
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-model-server-2-template"
+    Environment = var.environment
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name        = "${var.project_name}-${var.environment}-model-server-2"
+      Environment = var.environment
+    }
+  }
+}
+
 # EC2 Instance for Model Server
 resource "aws_instance" "model_server" {
   launch_template {
@@ -78,6 +119,22 @@ resource "aws_instance" "model_server" {
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-model-server"
+    Environment = var.environment
+  }
+}
+
+# EC2 Instance for Second Model Server
+resource "aws_instance" "model_server_2" {
+  launch_template {
+    id      = aws_launch_template.model_server_2.id
+    version = "$Latest"
+  }
+
+  subnet_id  = aws_subnet.private[0].id
+  private_ip = "10.0.10.43"
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-model-server-2"
     Environment = var.environment
   }
 }
