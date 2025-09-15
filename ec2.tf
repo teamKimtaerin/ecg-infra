@@ -32,8 +32,6 @@ resource "aws_launch_template" "model_server" {
   instance_type = var.model_instance_type
   key_name      = aws_key_pair.model_server.key_name
 
-  vpc_security_group_ids = [aws_security_group.model_server.id]
-
   iam_instance_profile {
     name = aws_iam_instance_profile.model_server_profile.name
   }
@@ -72,8 +70,6 @@ resource "aws_launch_template" "model_server_2" {
   image_id      = data.aws_ami.amazon_linux_gpu.id
   instance_type = var.model_instance_type
   key_name      = aws_key_pair.model_server.key_name
-
-  vpc_security_group_ids = [aws_security_group.model_server.id]
 
   iam_instance_profile {
     name = aws_iam_instance_profile.model_server_profile.name
@@ -114,8 +110,9 @@ resource "aws_instance" "model_server" {
     version = "$Latest"
   }
 
-  subnet_id  = aws_subnet.private[0].id
-  private_ip = "10.0.10.42"
+  subnet_id              = aws_subnet.private[0].id
+  private_ip             = "10.0.10.42"
+  vpc_security_group_ids = [aws_security_group.model_server.id]
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-model-server"
@@ -130,8 +127,9 @@ resource "aws_instance" "model_server_2" {
     version = "$Latest"
   }
 
-  subnet_id  = aws_subnet.private[0].id
-  private_ip = "10.0.10.43"
+  subnet_id              = aws_subnet.private[0].id
+  private_ip             = "10.0.10.43"
+  vpc_security_group_ids = [aws_security_group.model_server.id]
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-model-server-2"
