@@ -9,14 +9,14 @@ resource "aws_key_pair" "model_server" {
   }
 }
 
-# Get latest Ubuntu 22.04 LTS AMI
-data "aws_ami" "ubuntu_gpu" {
+# Get latest Amazon Linux 2 AMI with GPU support
+data "aws_ami" "amazon_linux_gpu" {
   most_recent = true
-  owners      = ["099720109477"] # Canonical
+  owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+    values = ["Deep Learning AMI GPU PyTorch *"]
   }
 
   filter {
@@ -25,10 +25,10 @@ data "aws_ami" "ubuntu_gpu" {
   }
 }
 
-# Launch Template for Model Server (Ubuntu + Docker)
+# Launch Template for Model Server
 resource "aws_launch_template" "model_server" {
   name_prefix   = "${var.project_name}-${var.environment}-model-server-"
-  image_id      = data.aws_ami.ubuntu_gpu.id
+  image_id      = data.aws_ami.amazon_linux_gpu.id
   instance_type = var.model_instance_type
   key_name      = aws_key_pair.model_server.key_name
 
@@ -45,10 +45,9 @@ resource "aws_launch_template" "model_server" {
     }
   }
 
-  user_data = base64encode(templatefile("${path.module}/user_data/model_server_docker.sh", {
+  user_data = base64encode(templatefile("${path.module}/user_data/model_server_init.sh", {
     s3_bucket_name = aws_s3_bucket.video_storage.id
     aws_region     = var.aws_region
-    repo_url       = var.github_repo_url
   }))
 
   tags = {
@@ -70,7 +69,7 @@ resource "aws_launch_template" "model_server" {
 # Launch Template for Renderer Server (Ubuntu)
 resource "aws_launch_template" "renderer_server" {
   name_prefix   = "${var.project_name}-${var.environment}-renderer-server-"
-  image_id      = data.aws_ami.ubuntu_gpu.id
+  image_id = data.aws_ami.amazon_linux_gpu.id
   instance_type = var.model_instance_type
   key_name      = aws_key_pair.model_server.key_name
 
