@@ -46,6 +46,12 @@ variable "model_instance_type" {
   default     = "g4dn.xlarge"
 }
 
+variable "github_repo_url" {
+  description = "GitHub repository URL for the ECG audio analyzer"
+  type        = string
+  default     = "https://github.com/teamKimtaerin/ecg-audio-analyzer.git"
+}
+
 variable "api_cpu" {
   description = "CPU units for API service"
   type        = number
