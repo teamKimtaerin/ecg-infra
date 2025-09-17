@@ -25,6 +25,22 @@ data "aws_ami" "amazon_linux_gpu" {
   }
 }
 
+# Get ECS Optimized GPU AMI
+data "aws_ami" "ecs_optimized_gpu" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-ecs-gpu-hvm-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 # Launch Template for Model Server
 resource "aws_launch_template" "model_server" {
   name_prefix   = "${var.project_name}-${var.environment}-model-server-"
@@ -66,15 +82,15 @@ resource "aws_launch_template" "model_server" {
 
 # Remove deep learning AMI - using Ubuntu for all instances
 
-# Launch Template for Renderer Server (Ubuntu)
+# Launch Template for Renderer Server (ECS Optimized GPU AMI)
 resource "aws_launch_template" "renderer_server" {
   name_prefix   = "${var.project_name}-${var.environment}-renderer-server-"
-  image_id = data.aws_ami.amazon_linux_gpu.id
-  instance_type = var.model_instance_type
+  image_id      = data.aws_ami.ecs_optimized_gpu.id
+  instance_type = "g4dn.xlarge"
   key_name      = aws_key_pair.model_server.key_name
 
   iam_instance_profile {
-    name = aws_iam_instance_profile.model_server_profile.name
+    name = aws_iam_instance_profile.ecs_instance_profile.name
   }
 
   block_device_mappings {
@@ -86,9 +102,9 @@ resource "aws_launch_template" "renderer_server" {
     }
   }
 
-  user_data = base64encode(templatefile("${path.module}/user_data/model_server_init.sh", {
-    s3_bucket_name = aws_s3_bucket.video_storage.id
-    aws_region     = var.aws_region
+  user_data = base64encode(templatefile("${path.module}/user_data/renderer_server_init.sh", {
+    cluster_name = aws_ecs_cluster.main.name
+    aws_region   = var.aws_region
   }))
 
   tags = {
@@ -131,7 +147,7 @@ resource "aws_instance" "renderer_server" {
 
   subnet_id              = aws_subnet.private[0].id
   private_ip             = "10.0.10.43"
-  vpc_security_group_ids = [aws_security_group.model_server.id]
+  vpc_security_group_ids = [aws_security_group.renderer_server.id]
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-renderer-server"

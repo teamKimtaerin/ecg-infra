@@ -74,6 +74,17 @@ output "model_server_private_ip" {
   value       = aws_instance.model_server.private_ip
 }
 
+output "renderer_server_instance_id" {
+  description = "Renderer server EC2 instance ID"
+  value       = aws_instance.renderer_server.id
+}
+
+output "renderer_server_private_ip" {
+  description = "Renderer server private IP"
+  value       = aws_instance.renderer_server.private_ip
+}
+
+
 # CloudFront Outputs
 output "cloudfront_distribution_id" {
   description = "CloudFront distribution ID"
@@ -149,4 +160,37 @@ output "database_url" {
   description = "Database connection URL"
   value       = "postgresql://${aws_db_instance.postgresql.username}:${random_password.db_password.result}@${aws_db_instance.postgresql.endpoint}:${aws_db_instance.postgresql.port}/${aws_db_instance.postgresql.db_name}"
   sensitive   = true
+}
+
+# Redis Outputs
+output "redis_endpoint" {
+  description = "ElastiCache Redis primary endpoint"
+  value       = aws_elasticache_replication_group.redis.primary_endpoint_address
+}
+
+output "redis_port" {
+  description = "ElastiCache Redis port"
+  value       = aws_elasticache_replication_group.redis.port
+}
+
+output "redis_connection_string" {
+  description = "Redis connection string"
+  value       = "redis://${aws_elasticache_replication_group.redis.primary_endpoint_address}:${aws_elasticache_replication_group.redis.port}"
+}
+
+
+output "redis_auth_token" {
+  description = "Redis authentication token"
+  value       = random_password.redis_auth_token.result
+  sensitive   = true
+}
+
+output "redis_security_group_id" {
+  description = "Redis security group ID"
+  value       = aws_security_group.redis.id
+}
+
+output "redis_sns_topic_arn" {
+  description = "SNS topic ARN for Redis notifications"
+  value       = aws_sns_topic.redis_notifications.arn
 }

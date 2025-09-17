@@ -148,6 +148,51 @@ resource "aws_iam_instance_profile" "model_server_profile" {
   }
 }
 
+# ECS Instance Role for Renderer Server
+resource "aws_iam_role" "ecs_instance_role" {
+  name = "${var.project_name}-${var.environment}-ecs-instance-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-ecs-instance-role"
+    Environment = var.environment
+  }
+}
+
+# ECS Instance Policy Attachments
+resource "aws_iam_role_policy_attachment" "ecs_instance_role_policy" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_ssm_policy" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# ECS Instance Profile
+resource "aws_iam_instance_profile" "ecs_instance_profile" {
+  name = "${var.project_name}-${var.environment}-ecs-instance-profile"
+  role = aws_iam_role.ecs_instance_role.name
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-ecs-instance-profile"
+    Environment = var.environment
+  }
+}
+
 # CloudFront Origin Access Control
 resource "aws_cloudfront_origin_access_control" "s3_oac" {
   name                              = "${var.project_name}-${var.environment}-s3-oac"

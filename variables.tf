@@ -94,3 +94,16 @@ variable "db_username" {
   type        = string
   default     = "postgres"
 }
+
+# Redis variables
+variable "redis_node_type" {
+  description = "ElastiCache Redis node type"
+  type        = string
+  default     = "cache.t3.micro"
+}
+
+variable "redis_num_cache_nodes" {
+  description = "Number of cache nodes in the Redis cluster"
+  type        = number
+  default     = 2
+}
