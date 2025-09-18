@@ -13,6 +13,21 @@ resource "aws_ecr_repository" "api" {
   }
 }
 
+# ECR Repository for Renderer
+resource "aws_ecr_repository" "renderer" {
+  name                 = "${var.project_name}-${var.environment}-renderer"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-renderer"
+    Environment = var.environment
+  }
+}
+
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-${var.environment}-cluster"
@@ -49,6 +64,16 @@ resource "aws_cloudwatch_log_group" "api" {
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-api-logs"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_log_group" "renderer" {
+  name              = "/ecs/${var.project_name}-${var.environment}-renderer"
+  retention_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-renderer-logs"
     Environment = var.environment
   }
 }
@@ -142,6 +167,88 @@ resource "aws_ecs_task_definition" "api" {
   }
 }
 
+# ECS Task Definition for Renderer
+resource "aws_ecs_task_definition" "renderer" {
+  family                   = "${var.project_name}-${var.environment}-renderer"
+  network_mode             = "bridge"
+  requires_compatibilities = ["EC2"]
+  cpu                      = var.renderer_cpu
+  memory                   = var.renderer_memory
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  lifecycle {
+    ignore_changes = [container_definitions]
+  }
+
+  container_definitions = jsonencode([
+    {
+      name  = "renderer"
+      image = var.renderer_container_image
+
+      portMappings = [
+        {
+          containerPort = 8002
+          hostPort      = 8002
+          protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "AWS_DEFAULT_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "S3_BUCKET_NAME"
+          value = aws_s3_bucket.video_storage.id
+        },
+        {
+          name  = "MODEL_SERVER_URL"
+          value = "http://${aws_instance.model_server.private_ip}:8001"
+        },
+        {
+          name  = "REDIS_URL"
+          value = "redis://${aws_elasticache_replication_group.redis.primary_endpoint_address}:6379"
+        },
+        {
+          name  = "REDIS_AUTH_TOKEN"
+          value = random_password.redis_auth_token.result
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.renderer.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+
+      healthCheck = {
+        command = ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
+        interval = 30
+        timeout = 5
+        retries = 3
+      }
+
+      # GPU support for rendering tasks
+      resourceRequirements = [
+        {
+          type  = "GPU"
+          value = "1"
+        }
+      ]
+    }
+  ])
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-renderer-task"
+    Environment = var.environment
+  }
+}
+
 # Application Load Balancer
 resource "aws_lb" "main" {
   name               = "${var.project_name}-${var.environment}-alb"
@@ -184,6 +291,32 @@ resource "aws_lb_target_group" "api" {
   }
 }
 
+# ALB Target Group for Renderer
+resource "aws_lb_target_group" "renderer" {
+  name        = "ecg-${var.environment}-render-tg"
+  port        = 8002
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "instance"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-renderer-tg"
+    Environment = var.environment
+  }
+}
+
 # ALB Listener
 resource "aws_lb_listener" "api" {
   load_balancer_arn = aws_lb.main.arn
@@ -197,6 +330,28 @@ resource "aws_lb_listener" "api" {
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-api-listener"
+    Environment = var.environment
+  }
+}
+
+# ALB Listener Rule for Renderer
+resource "aws_lb_listener_rule" "renderer" {
+  listener_arn = aws_lb_listener.api.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.renderer.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/render*", "/renderer*"]
+    }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-renderer-rule"
     Environment = var.environment
   }
 }
@@ -216,6 +371,28 @@ resource "aws_lb_listener" "api_https" {
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-api-https-listener"
+    Environment = var.environment
+  }
+}
+
+# ALB HTTPS Listener Rule for Renderer
+resource "aws_lb_listener_rule" "renderer_https" {
+  listener_arn = aws_lb_listener.api_https.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.renderer.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/render*", "/renderer*"]
+    }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-renderer-https-rule"
     Environment = var.environment
   }
 }
@@ -249,6 +426,39 @@ resource "aws_ecs_service" "api" {
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-api-service"
+    Environment = var.environment
+  }
+}
+
+# ECS Service for Renderer
+resource "aws_ecs_service" "renderer" {
+  name                   = "${var.project_name}-${var.environment}-renderer-service"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.renderer.arn
+  desired_count          = 1
+  launch_type            = "EC2"
+  enable_execute_command = true
+
+  placement_constraints {
+    type       = "memberOf"
+    expression = "ec2InstanceId == '${aws_instance.renderer_server.id}'"
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.renderer.arn
+    container_name   = "renderer"
+    container_port   = 8002
+  }
+
+  depends_on = [
+    aws_lb_listener_rule.renderer,
+    aws_lb_listener_rule.renderer_https,
+    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
+    aws_instance.renderer_server
+  ]
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-renderer-service"
     Environment = var.environment
   }
 }

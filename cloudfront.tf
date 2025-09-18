@@ -16,13 +16,13 @@ resource "aws_cloudfront_distribution" "main" {
 
   # API origin
   origin {
-    domain_name = aws_lb.main.dns_name
-    origin_id   = "ALB-${aws_lb.main.name}"
+    domain_name = "ho-it.site"
+    origin_id   = "ALB-Backend"
 
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "http-only"
+      origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
@@ -74,7 +74,7 @@ resource "aws_cloudfront_distribution" "main" {
     path_pattern           = "/api/*"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "ALB-${aws_lb.main.name}"
+    target_origin_id       = "ALB-Backend"
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 

@@ -41,6 +41,11 @@ output "ecr_api_repository_url" {
   value       = aws_ecr_repository.api.repository_url
 }
 
+output "ecr_renderer_repository_url" {
+  description = "ECR repository URL for Renderer"
+  value       = aws_ecr_repository.renderer.repository_url
+}
+
 # ECS Outputs
 output "ecs_cluster_name" {
   description = "ECS cluster name"
@@ -50,6 +55,11 @@ output "ecs_cluster_name" {
 output "ecs_service_name" {
   description = "ECS service name"
   value       = aws_ecs_service.api.name
+}
+
+output "ecs_renderer_service_name" {
+  description = "ECS Renderer service name"
+  value       = aws_ecs_service.renderer.name
 }
 
 # Load Balancer Outputs
@@ -143,6 +153,17 @@ output "api_url_http" {
 output "api_url_https" {
   description = "HTTPS API URL"
   value       = "https://${aws_lb.main.dns_name}"
+}
+
+# Renderer URLs
+output "renderer_url_http" {
+  description = "HTTP Renderer URL"
+  value       = "http://${aws_lb.main.dns_name}/render"
+}
+
+output "renderer_url_https" {
+  description = "HTTPS Renderer URL"
+  value       = "https://${aws_lb.main.dns_name}/render"
 }
 
 # RDS Outputs

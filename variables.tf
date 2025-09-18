@@ -37,7 +37,7 @@ variable "private_subnet_cidrs" {
 variable "api_container_image" {
   description = "API container image URI"
   type        = string
-  default     = "your-account-id.dkr.ecr.ap-northeast-2.amazonaws.com/ecg-api:latest"
+  default     = "084828586938.dkr.ecr.us-east-1.amazonaws.com/ecg-project-pipeline-dev-api:latest"
 }
 
 variable "model_instance_type" {
@@ -62,6 +62,24 @@ variable "api_memory" {
   description = "Memory for API service"
   type        = number
   default     = 1024
+}
+
+variable "renderer_container_image" {
+  description = "Renderer container image URI"
+  type        = string
+  default     = "084828586938.dkr.ecr.us-east-1.amazonaws.com/ecg-gpu-render:latest"
+}
+
+variable "renderer_cpu" {
+  description = "CPU units for Renderer service"
+  type        = number
+  default     = 1024
+}
+
+variable "renderer_memory" {
+  description = "Memory for Renderer service"
+  type        = number
+  default     = 2048
 }
 
 variable "domain_name" {
