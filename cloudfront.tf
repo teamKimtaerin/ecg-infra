@@ -16,13 +16,13 @@ resource "aws_cloudfront_distribution" "main" {
 
   # API origin
   origin {
-    domain_name = "ho-it.site"
+    domain_name = aws_lb.main.dns_name
     origin_id   = "ALB-Backend"
 
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "https-only"
+      origin_protocol_policy = "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
