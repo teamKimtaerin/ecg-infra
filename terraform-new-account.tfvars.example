@@ -1,0 +1,112 @@
+# =============================================================================
+# ECG Infrastructure - New AWS Account Configuration Template
+# =============================================================================
+#
+# 이 파일을 복사하여 실제 계정 정보로 수정한 후 사용하세요.
+# 복사 명령: cp terraform-new-account.tfvars.example terraform-new-account.tfvars
+# 사용 명령: terraform apply -var-file="terraform-new-account.tfvars"
+
+# =============================================================================
+# AWS Account & Region Configuration
+# =============================================================================
+
+# 🔑 REQUIRED: 새로운 AWS 계정 ID (12자리 숫자)
+# 예: aws_account_id = "123456789012"
+aws_account_id = "YOUR_NEW_ACCOUNT_ID_HERE"
+
+# 🌍 REQUIRED: AWS 리전 (ECR, ECS 등 모든 서비스가 이 리전에 생성됩니다)
+aws_region = "us-east-1"  # 또는 원하는 리전으로 변경
+
+# =============================================================================
+# Project Configuration
+# =============================================================================
+
+# 프로젝트 기본 설정
+project_name = "ecg-project-pipeline"
+environment  = "dev"  # dev, staging, prod 등
+
+# =============================================================================
+# VPC & Networking Configuration
+# =============================================================================
+
+# VPC CIDR 블록 (기본값 사용 또는 필요시 변경)
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.10.0/24", "10.0.20.0/24"]
+
+# =============================================================================
+# Container & ECR Configuration
+# =============================================================================
+
+# 🐳 REQUIRED: API 컨테이너 이미지 URI
+# 새 계정의 ECR로 이미지를 푸시한 후 여기에 입력하세요
+# 형식: {ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/{REPO_NAME}:{TAG}
+# 예: api_container_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/ecg-project-pipeline-dev-api:latest"
+api_container_image = null  # null이면 자동으로 구성됩니다
+
+# ECS 리소스 할당
+api_cpu    = 512
+api_memory = 1024
+
+# =============================================================================
+# Domain & SSL Certificate Configuration
+# =============================================================================
+
+# 🌐 OPTIONAL: CloudFront 커스텀 도메인 설정
+# 1. AWS Console에서 ACM 인증서를 us-east-1 리전에 발급받으세요
+# 2. 아래 변수들을 설정하세요:
+# 사용 예:
+# cloudfront_domain_aliases = ["your-domain.com", "www.your-domain.com"]
+# cloudfront_certificate_arn = "arn:aws:acm:us-east-1:YOUR_ACCOUNT:certificate/YOUR_CERT_ID"
+
+cloudfront_domain_aliases = []
+cloudfront_certificate_arn = null
+
+# =============================================================================
+# Database Configuration
+# =============================================================================
+
+# RDS PostgreSQL 설정
+db_instance_class = "db.t3.micro"  # 프로덕션에서는 더 큰 인스턴스 사용 권장
+db_name           = "ecgdb"
+db_username       = "postgres"
+
+# =============================================================================
+# Cache Configuration - REMOVED
+# =============================================================================
+
+# ElastiCache Redis - 비용 최적화를 위해 제거됨
+# 필요시 RDS PostgreSQL의 성능 최적화나 애플리케이션 레벨 캐싱 고려
+
+# =============================================================================
+# GPU Instance Configuration (Audio Production)
+# =============================================================================
+
+# 🎵 OPTIONAL: GPU 인스턴스 설정 (오디오 분석용)
+# 주의: g4dn.2xlarge 인스턴스는 시간당 약 $0.75-$1.20의 비용이 발생합니다
+# 사용하지 않을 때는 false로 설정하여 비용을 절약하세요
+
+gpu_instance_enabled = false  # true로 설정하면 GPU 인스턴스 생성
+
+# GPU 인스턴스 설정 (gpu_instance_enabled = true일 때만 적용)
+gpu_instance_type = "g4dn.2xlarge"  # 또는 g4dn.xlarge (더 저렴), g5.2xlarge (더 성능 좋음)
+gpu_instance_volume_size = 100       # EBS 볼륨 크기 (GB)
+
+# 🔑 REQUIRED (GPU 인스턴스 사용 시): EC2 키 페어 이름
+# 새 계정에서 먼저 키 페어를 생성한 후 여기에 입력하세요
+# aws ec2 create-key-pair --key-name your-key-name --query 'KeyMaterial' --output text > your-key-name.pem
+gpu_instance_key_name = null  # 예: "your-key-name"
+
+# =============================================================================
+# S3 Bucket Names Configuration (Account-specific)
+# =============================================================================
+
+# 🚨 IMPORTANT: S3 버킷 이름은 글로벌 유니크해야 합니다!
+# 기존 계정의 버킷명이 다른 곳에서 사용 중이면 새 이름 필요
+
+# Plugin Server 버킷 이름 (선택사항)
+# null이면 자동으로 계정 ID를 포함한 고유한 이름 생성
+plugin_server_bucket_name = null  # 예: "my-company-plugin-server-unique"
+
+# 계정 ID를 버킷 이름에 포함할지 여부 (고유성 보장)
+use_account_specific_bucket_names = true  # true 권장

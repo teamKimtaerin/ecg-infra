@@ -130,34 +130,55 @@ resource "aws_security_group" "renderer_server" {
   }
 }
 
-# Redis Security Group
-resource "aws_security_group" "redis" {
-  name        = "${var.project_name}-${var.environment}-redis-sg"
-  description = "Security group for ElastiCache Redis"
+# Redis Security Group - DELETED (ElastiCache removed for cost optimization)
+
+# Security Group Rules - DELETED (model server and renderer server removed)
+
+# GPU Instance Security Group (Audio Production)
+resource "aws_security_group" "gpu_instance" {
+  count       = var.gpu_instance_enabled ? 1 : 0
+  name        = "${var.project_name}-${var.environment}-gpu-instance-sg"
+  description = "Security group for GPU Instance (Audio Production)"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "Redis from ECS"
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    description     = "Redis from Model Server"
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [aws_security_group.model_server.id]
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    description     = "Redis from Renderer Server"
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [aws_security_group.renderer_server.id]
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Custom Application Port"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    description = "Jupyter Notebook"
+    from_port   = 8888
+    to_port     = 8888
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
@@ -168,29 +189,9 @@ resource "aws_security_group" "redis" {
   }
 
   tags = {
-    Name        = "${var.project_name}-${var.environment}-redis-sg"
+    Name        = "${var.project_name}-${var.environment}-gpu-instance-sg"
     Environment = var.environment
+    Purpose     = "Audio Analysis and Production"
   }
-}
-
-# Security Group Rules (separate to avoid circular dependency)
-resource "aws_security_group_rule" "ecs_from_model_server" {
-  type                     = "ingress"
-  from_port                = 8000
-  to_port                  = 8000
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.ecs.id
-  source_security_group_id = aws_security_group.model_server.id
-  description              = "HTTP from Model Server"
-}
-
-resource "aws_security_group_rule" "ecs_from_renderer_server" {
-  type                     = "ingress"
-  from_port                = 8000
-  to_port                  = 8000
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.ecs.id
-  source_security_group_id = aws_security_group.renderer_server.id
-  description              = "HTTP from Renderer Server"
 }
 

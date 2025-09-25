@@ -32,8 +32,8 @@ resource "aws_cloudfront_distribution" "main" {
   default_root_object = "index.html"
   comment             = "${var.project_name} ${var.environment} CloudFront Distribution"
   
-  # Custom domain aliases
-  aliases = ["ho-it.site", "www.ho-it.site"]
+  # Custom domain aliases (only set if provided)
+  aliases = var.cloudfront_domain_aliases
 
   # Logging configuration
   logging_config {
@@ -125,9 +125,15 @@ resource "aws_cloudfront_distribution" "main" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = "arn:aws:acm:us-east-1:084828586938:certificate/ae2eb383-27f0-481c-a0aa-000a27e78049"
-    ssl_support_method       = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2021"
+    # Use external certificate ARN if provided, otherwise use CloudFront default
+    acm_certificate_arn = var.cloudfront_certificate_arn
+
+    # Use CloudFront default certificate when no external certificate is provided
+    cloudfront_default_certificate = var.cloudfront_certificate_arn == null
+
+    # SSL settings for custom certificates (only when external certificate is used)
+    ssl_support_method       = var.cloudfront_certificate_arn != null ? "sni-only" : null
+    minimum_protocol_version = var.cloudfront_certificate_arn != null ? "TLSv1.2_2021" : null
   }
 
   custom_error_response {
