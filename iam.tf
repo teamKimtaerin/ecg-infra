@@ -67,7 +67,9 @@ resource "aws_iam_role_policy" "ecs_task_s3_policy" {
         ]
         Resource = [
           aws_s3_bucket.video_storage.arn,
-          "${aws_s3_bucket.video_storage.arn}/*"
+          "${aws_s3_bucket.video_storage.arn}/*",
+          aws_s3_bucket.plugin_server.arn,
+          "${aws_s3_bucket.plugin_server.arn}/*"
         ]
       },
       {
@@ -126,7 +128,9 @@ resource "aws_iam_role_policy" "model_server_s3_policy" {
         ]
         Resource = [
           aws_s3_bucket.video_storage.arn,
-          "${aws_s3_bucket.video_storage.arn}/*"
+          "${aws_s3_bucket.video_storage.arn}/*",
+          aws_s3_bucket.plugin_server.arn,
+          "${aws_s3_bucket.plugin_server.arn}/*"
         ]
       }
     ]
@@ -265,11 +269,128 @@ resource "aws_s3_bucket_policy" "video_storage_policy" {
         ]
         Resource = [
           aws_s3_bucket.video_storage.arn,
-          "${aws_s3_bucket.video_storage.arn}/*"
+          "${aws_s3_bucket.video_storage.arn}/*",
+          aws_s3_bucket.plugin_server.arn,
+          "${aws_s3_bucket.plugin_server.arn}/*"
         ]
       }
     ]
   })
 
   depends_on = [aws_cloudfront_distribution.main]
+}
+
+# Audio Production Instance Role
+resource "aws_iam_role" "audio_production_role" {
+  count = var.gpu_instance_enabled ? 1 : 0
+  name  = "${var.project_name}-${var.environment}-audio-production-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-audio-production-role"
+    Environment = var.environment
+    Purpose     = "Audio Analysis and Production"
+  }
+}
+
+# Audio Production S3 Policy
+resource "aws_iam_role_policy" "audio_production_s3_policy" {
+  count = var.gpu_instance_enabled ? 1 : 0
+  name  = "${var.project_name}-${var.environment}-audio-s3-policy"
+  role  = aws_iam_role.audio_production_role[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:HeadObject",
+          "s3:PutObject",
+          "s3:ListBucket",
+          "s3:DeleteObject"
+        ]
+        Resource = [
+          aws_s3_bucket.video_storage.arn,
+          "${aws_s3_bucket.video_storage.arn}/*",
+          aws_s3_bucket.plugin_server.arn,
+          "${aws_s3_bucket.plugin_server.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# Audio Production CloudWatch Policy
+resource "aws_iam_role_policy" "audio_production_cloudwatch_policy" {
+  count = var.gpu_instance_enabled ? 1 : 0
+  name  = "${var.project_name}-${var.environment}-audio-cloudwatch-policy"
+  role  = aws_iam_role.audio_production_role[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/ec2/audio-production*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricData",
+          "cloudwatch:GetMetricStatistics",
+          "cloudwatch:ListMetrics"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Session Manager Policy for Audio Production
+resource "aws_iam_role_policy_attachment" "audio_production_ssm_policy" {
+  count      = var.gpu_instance_enabled ? 1 : 0
+  role       = aws_iam_role.audio_production_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# CloudWatch Agent Policy for Audio Production
+resource "aws_iam_role_policy_attachment" "audio_production_cloudwatch_agent_policy" {
+  count      = var.gpu_instance_enabled ? 1 : 0
+  role       = aws_iam_role.audio_production_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+# Audio Production Instance Profile
+resource "aws_iam_instance_profile" "audio_production" {
+  count = var.gpu_instance_enabled ? 1 : 0
+  name  = "${var.project_name}-${var.environment}-audio-production-profile"
+  role  = aws_iam_role.audio_production_role[0].name
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-audio-production-profile"
+    Environment = var.environment
+    Purpose     = "Audio Analysis and Production"
+  }
 }

@@ -51,34 +51,9 @@ resource "aws_subnet" "private" {
   }
 }
 
-# NAT Gateway EIP
-resource "aws_eip" "nat" {
-  count = length(aws_subnet.public)
+# NAT Gateway EIP - DELETED (not used in current infrastructure)
 
-  domain = "vpc"
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-nat-eip-${count.index + 1}"
-    Environment = var.environment
-  }
-
-  depends_on = [aws_internet_gateway.main]
-}
-
-# NAT Gateways
-resource "aws_nat_gateway" "main" {
-  count = length(aws_subnet.public)
-
-  allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = aws_subnet.public[count.index].id
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-nat-${count.index + 1}"
-    Environment = var.environment
-  }
-
-  depends_on = [aws_internet_gateway.main]
-}
+# NAT Gateways - DELETED (not used in current infrastructure)
 
 # Public Route Table
 resource "aws_route_table" "public" {
@@ -95,16 +70,14 @@ resource "aws_route_table" "public" {
   }
 }
 
-# Private Route Tables
+# Private Route Tables - NAT gateway route removed (not used)
 resource "aws_route_table" "private" {
   count = length(aws_subnet.private)
 
   vpc_id = aws_vpc.main.id
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main[count.index].id
-  }
+  # No default route - private subnets are truly private
+  # Resources in private subnets can only communicate within VPC
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-private-rt-${count.index + 1}"

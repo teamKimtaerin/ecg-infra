@@ -35,6 +35,21 @@ output "s3_frontend_arn" {
   value       = aws_s3_bucket.frontend.arn
 }
 
+output "s3_plugin_server_bucket" {
+  description = "S3 bucket for plugin server"
+  value       = aws_s3_bucket.plugin_server.id
+}
+
+output "s3_plugin_server_arn" {
+  description = "S3 bucket ARN for plugin server"
+  value       = aws_s3_bucket.plugin_server.arn
+}
+
+output "s3_plugin_server_domain_name" {
+  description = "S3 bucket domain name for plugin server"
+  value       = aws_s3_bucket.plugin_server.bucket_domain_name
+}
+
 # ECR Outputs
 output "ecr_api_repository_url" {
   description = "ECR repository URL for API"
@@ -57,10 +72,7 @@ output "ecs_service_name" {
   value       = aws_ecs_service.api.name
 }
 
-output "ecs_renderer_service_name" {
-  description = "ECS Renderer service name"
-  value       = aws_ecs_service.renderer.name
-}
+# ECS Renderer service - DELETED (not used)
 
 # Load Balancer Outputs
 output "alb_dns_name" {
@@ -73,26 +85,7 @@ output "alb_hosted_zone_id" {
   value       = aws_lb.main.zone_id
 }
 
-# EC2 Outputs
-output "model_server_instance_id" {
-  description = "Model server EC2 instance ID"
-  value       = aws_instance.model_server.id
-}
-
-output "model_server_private_ip" {
-  description = "Model server private IP"
-  value       = aws_instance.model_server.private_ip
-}
-
-output "renderer_server_instance_id" {
-  description = "Renderer server EC2 instance ID"
-  value       = aws_instance.renderer_server.id
-}
-
-output "renderer_server_private_ip" {
-  description = "Renderer server private IP"
-  value       = aws_instance.renderer_server.private_ip
-}
+# EC2 instances outputs - DELETED (instances not used)
 
 
 # CloudFront Outputs
@@ -122,10 +115,7 @@ output "ecs_security_group_id" {
   value       = aws_security_group.ecs.id
 }
 
-output "model_server_security_group_id" {
-  description = "Model server security group ID"
-  value       = aws_security_group.model_server.id
-}
+# Model server security group - DELETED (not used)
 
 # IAM Roles
 output "ecs_task_role_arn" {
@@ -133,16 +123,9 @@ output "ecs_task_role_arn" {
   value       = aws_iam_role.ecs_task_role.arn
 }
 
-output "model_server_role_arn" {
-  description = "Model server role ARN"
-  value       = aws_iam_role.model_server_role.arn
-}
+# Model server role - DELETED (not used)
 
-# Certificate
-output "certificate_arn" {
-  description = "ACM certificate ARN"
-  value       = var.domain_name == null ? aws_acm_certificate.self_signed[0].arn : (var.create_certificate ? aws_acm_certificate.main[0].arn : null)
-}
+# Certificate output removed - certificates managed via GUI
 
 # API URLs
 output "api_url_http" {
@@ -155,16 +138,7 @@ output "api_url_https" {
   value       = "https://${aws_lb.main.dns_name}"
 }
 
-# Renderer URLs
-output "renderer_url_http" {
-  description = "HTTP Renderer URL"
-  value       = "http://${aws_lb.main.dns_name}/render"
-}
-
-output "renderer_url_https" {
-  description = "HTTPS Renderer URL"
-  value       = "https://${aws_lb.main.dns_name}/render"
-}
+# Renderer URLs - DELETED (renderer service not used)
 
 # RDS Outputs
 output "rds_endpoint" {
@@ -183,35 +157,35 @@ output "database_url" {
   sensitive   = true
 }
 
-# Redis Outputs
-output "redis_endpoint" {
-  description = "ElastiCache Redis primary endpoint"
-  value       = aws_elasticache_replication_group.redis.primary_endpoint_address
+# Redis Outputs - DELETED (ElastiCache removed for cost optimization)
+
+# GPU Instance Outputs (Audio Production)
+output "gpu_instance_id" {
+  description = "GPU instance ID"
+  value       = var.gpu_instance_enabled ? aws_instance.audio_production[0].id : null
 }
 
-output "redis_port" {
-  description = "ElastiCache Redis port"
-  value       = aws_elasticache_replication_group.redis.port
+output "gpu_instance_public_ip" {
+  description = "GPU instance public IP"
+  value       = var.gpu_instance_enabled ? aws_eip.audio_production[0].public_ip : null
 }
 
-output "redis_connection_string" {
-  description = "Redis connection string"
-  value       = "redis://${aws_elasticache_replication_group.redis.primary_endpoint_address}:${aws_elasticache_replication_group.redis.port}"
+output "gpu_instance_private_ip" {
+  description = "GPU instance private IP"
+  value       = var.gpu_instance_enabled ? aws_instance.audio_production[0].private_ip : null
 }
 
-
-output "redis_auth_token" {
-  description = "Redis authentication token"
-  value       = random_password.redis_auth_token.result
-  sensitive   = true
+output "gpu_instance_dns" {
+  description = "GPU instance public DNS"
+  value       = var.gpu_instance_enabled ? aws_instance.audio_production[0].public_dns : null
 }
 
-output "redis_security_group_id" {
-  description = "Redis security group ID"
-  value       = aws_security_group.redis.id
+output "gpu_instance_ssh_command" {
+  description = "SSH command to connect to GPU instance"
+  value       = var.gpu_instance_enabled && var.gpu_instance_key_name != null ? "ssh -i ~/.ssh/${var.gpu_instance_key_name}.pem ubuntu@${aws_eip.audio_production[0].public_ip}" : null
 }
 
-output "redis_sns_topic_arn" {
-  description = "SNS topic ARN for Redis notifications"
-  value       = aws_sns_topic.redis_notifications.arn
+output "gpu_instance_security_group_id" {
+  description = "GPU instance security group ID"
+  value       = var.gpu_instance_enabled ? aws_security_group.gpu_instance[0].id : null
 }
