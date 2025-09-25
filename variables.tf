@@ -82,6 +82,24 @@ variable "renderer_memory" {
   default     = 2048
 }
 
+variable "model_container_image" {
+  description = "Model Server container image URI"
+  type        = string
+  default     = "084828586938.dkr.ecr.us-east-1.amazonaws.com/ecg-audio-analyzer:latest"
+}
+
+variable "model_cpu" {
+  description = "CPU units for Model Server service"
+  type        = number
+  default     = 1024
+}
+
+variable "model_memory" {
+  description = "Memory for Model Server service"
+  type        = number
+  default     = 2048
+}
+
 variable "domain_name" {
   description = "Domain name for the application (optional)"
   type        = string

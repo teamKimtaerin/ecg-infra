@@ -59,10 +59,11 @@ resource "aws_cloudfront_distribution" "main" {
       }
     }
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.url_rewrite.arn
-    }
+    # Temporarily removed function association to fix API routing
+    # function_association {
+    #   event_type   = "viewer-request"
+    #   function_arn = aws_cloudfront_function.url_rewrite.arn
+    # }
 
     min_ttl     = 0
     default_ttl = 86400
@@ -157,7 +158,12 @@ resource "aws_cloudfront_function" "url_rewrite" {
 function handler(event) {
     var request = event.request;
     var uri = request.uri;
-    
+
+    // Skip rewriting for API paths
+    if (uri.startsWith("/api/")) {
+        return request;
+    }
+
     // Check whether the URI is missing a file name.
     if (uri.endsWith("/")) {
         request.uri += "index.html";
@@ -166,7 +172,7 @@ function handler(event) {
     else if (!uri.includes(".")) {
         request.uri += "/index.html";
     }
-    
+
     return request;
 }
 EOF

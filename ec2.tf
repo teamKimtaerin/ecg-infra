@@ -9,14 +9,14 @@ resource "aws_key_pair" "model_server" {
   }
 }
 
-# Get latest Amazon Linux 2 AMI with GPU support
-data "aws_ami" "amazon_linux_gpu" {
+# Get ECS Optimized GPU AMI for Model Server
+data "aws_ami" "ecs_optimized_gpu_model" {
   most_recent = true
   owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["Deep Learning AMI GPU PyTorch *"]
+    values = ["amzn2-ami-ecs-gpu-hvm-*"]
   }
 
   filter {
@@ -44,12 +44,12 @@ data "aws_ami" "ecs_optimized_gpu" {
 # Launch Template for Model Server
 resource "aws_launch_template" "model_server" {
   name_prefix   = "${var.project_name}-${var.environment}-model-server-"
-  image_id      = data.aws_ami.amazon_linux_gpu.id
+  image_id      = data.aws_ami.ecs_optimized_gpu_model.id
   instance_type = var.model_instance_type
   key_name      = aws_key_pair.model_server.key_name
 
   iam_instance_profile {
-    name = aws_iam_instance_profile.model_server_profile.name
+    name = aws_iam_instance_profile.ecs_instance_profile.name
   }
 
   block_device_mappings {
@@ -61,9 +61,9 @@ resource "aws_launch_template" "model_server" {
     }
   }
 
-  user_data = base64encode(templatefile("${path.module}/user_data/model_server_init.sh", {
-    s3_bucket_name = aws_s3_bucket.video_storage.id
-    aws_region     = var.aws_region
+  user_data = base64encode(templatefile("${path.module}/user_data/model_server_ecs_init.sh", {
+    cluster_name = aws_ecs_cluster.main.name
+    aws_region   = var.aws_region
   }))
 
   tags = {
@@ -74,7 +74,7 @@ resource "aws_launch_template" "model_server" {
   tag_specifications {
     resource_type = "instance"
     tags = {
-      Name        = "${var.project_name}-${var.environment}-model-server"
+      Name        = "${var.project_name}-${var.environment}-model-server-ecs"
       Environment = var.environment
     }
   }
@@ -86,7 +86,7 @@ resource "aws_launch_template" "model_server" {
 resource "aws_launch_template" "renderer_server" {
   name_prefix   = "${var.project_name}-${var.environment}-renderer-server-"
   image_id      = data.aws_ami.ecs_optimized_gpu.id
-  instance_type = "g4dn.xlarge"
+  instance_type = var.model_instance_type
   key_name      = aws_key_pair.model_server.key_name
 
   iam_instance_profile {
@@ -121,19 +121,18 @@ resource "aws_launch_template" "renderer_server" {
   }
 }
 
-# EC2 Instance for Model Server
+# EC2 Instance for Model Server (ECS)
 resource "aws_instance" "model_server" {
   launch_template {
     id      = aws_launch_template.model_server.id
     version = "$Latest"
   }
 
-  subnet_id              = aws_subnet.private[0].id
-  private_ip             = "10.0.10.42"
+  subnet_id              = aws_subnet.public[0].id
   vpc_security_group_ids = [aws_security_group.model_server.id]
 
   tags = {
-    Name        = "${var.project_name}-${var.environment}-model-server"
+    Name        = "${var.project_name}-${var.environment}-model-server-ecs"
     Environment = var.environment
   }
 }

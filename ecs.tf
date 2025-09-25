@@ -78,6 +78,16 @@ resource "aws_cloudwatch_log_group" "renderer" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "model_server" {
+  name              = "/ecs/${var.project_name}-${var.environment}-model-server"
+  retention_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-model-server-logs"
+    Environment = var.environment
+  }
+}
+
 # ECS Task Definition
 resource "aws_ecs_task_definition" "api" {
   family                   = "${var.project_name}-${var.environment}-api"
@@ -88,9 +98,9 @@ resource "aws_ecs_task_definition" "api" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
   
-  lifecycle {
-    ignore_changes = [container_definitions]
-  }
+  # lifecycle {
+  #   ignore_changes = [container_definitions]
+  # }
 
   container_definitions = jsonencode([
     {
@@ -115,7 +125,7 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name  = "MODEL_SERVER_URL"
-          value = "http://${aws_instance.model_server.private_ip}:8001"
+          value = "http://${aws_instance.model_server.public_ip}:8001"
         },
         {
           name  = "DATABASE_URL"
@@ -177,14 +187,16 @@ resource "aws_ecs_task_definition" "renderer" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
 
-  lifecycle {
-    ignore_changes = [container_definitions]
-  }
+  # lifecycle {
+  #   ignore_changes = [container_definitions]
+  # }
 
   container_definitions = jsonencode([
     {
       name  = "renderer"
       image = var.renderer_container_image
+      cpu   = var.renderer_cpu
+      memory = var.renderer_memory
 
       portMappings = [
         {
@@ -205,7 +217,7 @@ resource "aws_ecs_task_definition" "renderer" {
         },
         {
           name  = "MODEL_SERVER_URL"
-          value = "http://${aws_instance.model_server.private_ip}:8001"
+          value = "http://${aws_instance.model_server.public_ip}:8001"
         },
         {
           name  = "REDIS_URL"
@@ -245,6 +257,74 @@ resource "aws_ecs_task_definition" "renderer" {
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-renderer-task"
+    Environment = var.environment
+  }
+}
+
+# ECS Task Definition for Model Server
+resource "aws_ecs_task_definition" "model_server" {
+  family                   = "${var.project_name}-${var.environment}-model-server"
+  network_mode             = "bridge"
+  requires_compatibilities = ["EC2"]
+  cpu                      = var.model_cpu
+  memory                   = var.model_memory
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "model-server"
+      image = var.model_container_image
+      cpu   = var.model_cpu
+      memory = var.model_memory
+
+      portMappings = [
+        {
+          containerPort = 8001
+          hostPort      = 8001
+          protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "AWS_DEFAULT_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "S3_BUCKET_NAME"
+          value = aws_s3_bucket.video_storage.id
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.model_server.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+
+      healthCheck = {
+        command = ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+        interval = 30
+        timeout = 5
+        retries = 3
+      }
+
+      # GPU support for model inference
+      resourceRequirements = [
+        {
+          type  = "GPU"
+          value = "1"
+        }
+      ]
+    }
+  ])
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-model-server-task"
     Environment = var.environment
   }
 }
@@ -459,6 +539,31 @@ resource "aws_ecs_service" "renderer" {
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-renderer-service"
+    Environment = var.environment
+  }
+}
+
+# ECS Service for Model Server
+resource "aws_ecs_service" "model_server" {
+  name                   = "${var.project_name}-${var.environment}-model-server-service"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.model_server.arn
+  desired_count          = 1
+  launch_type            = "EC2"
+  enable_execute_command = true
+
+  placement_constraints {
+    type       = "memberOf"
+    expression = "ec2InstanceId == '${aws_instance.model_server.id}'"
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
+    aws_instance.model_server
+  ]
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-model-server-service"
     Environment = var.environment
   }
 }
